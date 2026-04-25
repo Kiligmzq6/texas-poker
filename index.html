@@ -406,18 +406,20 @@
     .bet-slider-wrap {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     .bet-slider-wrap input[type=range] {
       flex: 1;
     }
 
-    .bet-val {
-      min-width: 60px;
-      text-align: right;
-      font-weight: bold;
-      color: var(--gold);
+    .bet-slider-wrap input[type=number] {
+      -moz-appearance: textfield;
+    }
+    .bet-slider-wrap input[type=number]::-webkit-inner-spin-button,
+    .bet-slider-wrap input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
     }
 
     .hand-rank-hint {
@@ -561,7 +563,7 @@
       .action-btns { gap: 5px; }
       .action-btns .btn { padding: 8px 8px; font-size: 11px; flex: 1; min-width: 0; }
       .bet-slider-wrap input[type=range] { height: 28px; }
-      .bet-val { font-size: 11px; min-width: 40px; }
+      .bet-slider-wrap input[type=number] { width: 58px; font-size: 11px; padding: 3px 4px; }
       .hand-rank-hint { font-size: 10px; }
       .stats-row { font-size: 10px; }
       .modal { padding: 16px 14px; border-radius: 12px; }
@@ -606,8 +608,8 @@
             <button class="btn btn-danger" id="btnAllIn" onclick="playerAction('allin')" disabled>All In</button>
           </div>
           <div class="bet-slider-wrap" id="raiseControl" style="display:none;">
-            <input type="range" id="raiseSlider" min="0" max="100" value="0" oninput="updateRaiseVal()">
-            <span class="bet-val" id="raiseVal">0</span>
+            <input type="range" id="raiseSlider" min="0" max="100" value="0" oninput="syncFromSlider()">
+            <input type="number" id="raiseInput" min="0" max="99999" style="width:72px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.2);border-radius:5px;color:var(--gold);padding:4px 6px;font-size:13px;font-weight:bold;text-align:center;" oninput="syncFromInput()">
           </div>
           <div class="hand-rank-hint" id="handHint"></div>
         </div>
@@ -872,7 +874,7 @@
         slider.min = minAllowed;
         slider.max = human.chips + human.bet;
         if (parseInt(slider.value) < minAllowed) slider.value = minAllowed;
-        updateRaiseVal();
+        syncFromSlider();
       } else {
         document.getElementById('btnRaise').disabled = true;
         rc.style.display = 'none';
@@ -890,8 +892,15 @@
       document.getElementById('statChips').textContent = human.chips;
     }
 
-    function updateRaiseVal() {
-      document.getElementById('raiseVal').textContent = document.getElementById('raiseSlider').value;
+    function syncFromSlider() {
+      const val = document.getElementById('raiseSlider').value;
+      document.getElementById('raiseInput').value = val;
+    }
+    function syncFromInput() {
+      let val = parseInt(document.getElementById('raiseInput').value) || 0;
+      const slider = document.getElementById('raiseSlider');
+      val = Math.max(parseInt(slider.min), Math.min(parseInt(slider.max), val));
+      slider.value = val;
     }
 
     // ==================== 游戏流程控制 ====================
@@ -1097,36 +1106,145 @@
       setTimeout(aiTurn, 800 + Math.random() * 800);
     }
 
+    // ==================== NPC 性格系统 ====================
+    // 每个 NPC 有不同性格，影响激进/保守/诈唬倾向
+    const NPC_PERSONALITIES = {
+      1: { name: 'Alice',   aggression: 0.45, bluffFreq: 0.12, callStation: 0.25, tiltThreshold: 0.3 },  // 均衡型
+      2: { name: 'Bob',     aggression: 0.65, bluffFreq: 0.25, callStation: 0.10, tiltThreshold: 0.5 },  // 激进型
+      3: { name: 'Charlie', aggression: 0.25, bluffFreq: 0.05, callStation: 0.50, tiltThreshold: 0.15 }, // 保守跟注站
+      4: { name: 'David',   aggression: 0.55, bluffFreq: 0.18, callStation: 0.15, tiltThreshold: 0.4 },  // 松凶型
+    };
+
+    // 翻牌前手牌强度评分 (0~1)
+    function preflopStrength(hand) {
+      const r1 = RANK_VAL[hand[0].rank], r2 = RANK_VAL[hand[1].rank];
+      const hi = Math.max(r1, r2), lo = Math.min(r1, r2);
+      const suited = hand[0].suit === hand[1].suit;
+      const pair = r1 === r2;
+      let score = 0;
+      // 对子
+      if (pair) { score = 0.5 + (hi - 2) / 24; } // 22=0.5, AA=1.0
+      else {
+        score = (hi + lo - 4) / 24 * 0.6; // 高牌占主导
+        if (suited) score += 0.06;
+        if (hi - lo === 1) score += 0.04; // 连牌
+        else if (hi - lo === 2) score += 0.02;
+        else if (hi - lo > 4) score -= 0.05; // 间隔太大
+      }
+      // AA=1.0, KK=0.96, AKs=0.8, AKo=0.74, 72o=0.08 大致这样
+      return Math.max(0, Math.min(1, score));
+    }
+
+    // 评估对手加注意图（判断是否像诈唬）
+    function estimateRaiseCredibility(g, raiserIdx) {
+      const raiser = g.players[raiserIdx];
+      const raiseAmt = raiser.bet;
+      const potSize = g.pot + g.players.reduce((s, x) => s + x.bet, 0);
+      // 加注相对于底池的比例
+      const raiseRatio = raiseAmt / (potSize + 1);
+      // 极大加注 (3x底池+) 不太像诈唬，中等加注更可疑
+      if (raiseRatio > 2.5) return 0.7; // 大加注更可信
+      if (raiseRatio > 1.0) return 0.5; // 中等
+      return 0.3; // 小加注可能诈唬
+    }
+
     function aiTurn() {
       const g = game;
       const idx = g.currentPlayer;
       const p = g.players[idx];
       if (p.folded || p.allin) { nextOrAdvance(); return; }
 
+      const personality = NPC_PERSONALITIES[idx] || NPC_PERSONALITIES[1];
       const toCall = g.lastRaise - p.bet;
-      const potOdds = toCall / (g.pot + g.players.reduce((s, x) => s + x.bet, 0) + toCall + 0.001);
+      const totalPot = g.pot + g.players.reduce((s, x) => s + x.bet, 0);
+      const potOdds = toCall / (totalPot + toCall + 0.001);
       const allCards = [...p.hand, ...g.community];
-      const handStrength = allCards.length >= 5 ? evaluate7(allCards).rank : 0;
-      const rand = Math.random();
-      let action = 'fold';
+      const isPreflop = g.community.length === 0;
+
+      // 牌力评估
+      let handStrength;
+      if (isPreflop) {
+        handStrength = preflopStrength(p.hand) * 8; // 映射到 0~8 量级
+      } else {
+        handStrength = evaluate7(allCards).rank;
+      }
+      // 归一化到 0~1
+      const strengthNorm = Math.min(1, handStrength / 8);
+
+      // 随机性：加入高斯噪声让策略不可预测
+      const noise = (Math.random() + Math.random() + Math.random() - 1.5) / 3; // ~N(0,0.2)
+      const effectiveStrength = Math.max(0, Math.min(1, strengthNorm + noise * 0.3));
+
+      // 对手加注可信度评估
+      const lastRaiser = g.players.findIndex((pl, pi) => pi !== idx && pl.bet === g.lastRaise && pl.actedThisRound && !pl.folded);
+      const raiseCredibility = lastRaiser >= 0 ? estimateRaiseCredibility(g, lastRaiser) : 0;
+
+      // 跟注意愿：根据性格、牌力、底池赔率综合
+      const callWillingness = (
+        effectiveStrength * 0.5 +
+        personality.callStation * 0.25 +
+        (1 - potOdds) * 0.15 +
+        (1 - raiseCredibility) * 0.1 +
+        noise * 0.1
+      );
+
+      // 加注意愿
+      const raiseWillingness = (
+        effectiveStrength * 0.4 +
+        personality.aggression * 0.25 +
+        personality.bluffFreq * 0.2 +
+        noise * 0.15
+      );
+
+      let action, raiseTarget = 0;
 
       if (toCall === 0) {
-        if (handStrength >= 2 || rand > 0.4) action = 'check';
-        else action = 'check';
-        if (handStrength < 2 && rand > 0.9) action = 'raise'; // Bluff
-        if (handStrength >= 4 && rand > 0.6) action = 'raise'; // Value
+        // 无需跟注
+        if (raiseWillingness > 0.55) {
+          action = 'raise';
+          // 根据牌力和性格决定加注大小
+          if (effectiveStrength > 0.7) {
+            raiseTarget = Math.floor(totalPot * (0.5 + Math.random() * 0.8)); // 强牌大加注
+          } else if (effectiveStrength > 0.4 || Math.random() < personality.bluffFreq) {
+            raiseTarget = Math.floor(totalPot * (0.3 + Math.random() * 0.5)); // 中等或诈唬
+          } else {
+            action = 'check';
+          }
+        } else {
+          action = 'check';
+        }
       } else {
-        if (handStrength >= 5 || (handStrength >= 3 && potOdds < 0.25)) action = 'call';
-        else if (handStrength >= 2 && potOdds < 0.15) action = 'call';
-        else if (toCall <= p.chips * 0.08) action = 'call';
-        else action = 'fold';
-
-        if (handStrength >= 6 && rand > 0.4) action = 'raise';
-        if (handStrength >= 4 && rand > 0.8) action = 'raise';
+        // 需要跟注
+        // 关键改动：即使面对大加注，有一定牌力时也愿意跟注（不轻易被吓跑）
+        if (callWillingness > 0.35) {
+          // 有一定牌力，考虑跟注或加注
+          if (raiseWillingness > 0.6 && effectiveStrength > 0.5) {
+            action = 'raise';
+            raiseTarget = Math.floor(totalPot * (0.4 + Math.random() * 0.6));
+          } else if (raiseWillingness > 0.65 && Math.random() < personality.bluffFreq * 2) {
+            // 偶尔反诈唬 (re-raise bluff)
+            action = 'raise';
+            raiseTarget = Math.floor(totalPot * (0.5 + Math.random() * 0.5));
+          } else {
+            action = 'call';
+          }
+        } else if (callWillingness > 0.2 && personality.callStation > 0.3) {
+          // 跟注站性格：即使牌力不足也常跟
+          action = 'call';
+        } else if (toCall <= p.chips * 0.06 && Math.random() < 0.4) {
+          // 跟注成本很低，偶尔跟一下
+          action = 'call';
+        } else {
+          action = 'fold';
+        }
       }
 
-      if (p.chips <= BIG_BLIND * 3 && handStrength >= 2) action = 'allin';
+      // 短筹码逻辑：筹码极少时全压
+      if (p.chips <= BIG_BLIND * 3 && effectiveStrength > 0.25) {
+        action = 'allin';
+      }
 
+      // 执行动作
       if (action === 'fold') {
         p.folded = true; p.actedThisRound = true; log(`${p.name} 弃牌`, 'fold'); nextOrAdvance();
       }
@@ -1141,10 +1259,10 @@
       else if (action === 'raise' || action === 'allin') {
         const minTotal = g.lastRaise + g.minRaise;
         const maxTotal = p.bet + p.chips;
-        if (minTotal > maxTotal || action === 'allin') {
-          handleRaiseOrAllin(idx, maxTotal); // 筹码不够完成标准加注，直接All in
+        if (action === 'allin' || minTotal > maxTotal) {
+          handleRaiseOrAllin(idx, maxTotal);
         } else {
-          const target = Math.min(Math.max(minTotal, Math.floor((g.pot + toCall) * (0.5 + Math.random() * 0.5)) + p.bet), maxTotal);
+          const target = Math.min(Math.max(minTotal, raiseTarget + p.bet), maxTotal);
           handleRaiseOrAllin(idx, target);
         }
       }
