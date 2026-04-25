@@ -44,31 +44,35 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 24px;
+      padding: 10px 16px;
       background: rgba(0, 0, 0, 0.35);
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
     .app-header h1 {
-      font-size: 22px;
+      font-size: 18px;
       color: var(--gold);
       letter-spacing: 2px;
     }
 
     .header-btns {
       display: flex;
-      gap: 10px;
+      gap: 6px;
+      flex-wrap: wrap;
     }
 
     .btn {
-      padding: 8px 18px;
+      padding: 8px 14px;
       border: none;
       border-radius: 6px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
       transition: all 0.2s;
       color: #fff;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .btn:hover {
@@ -101,8 +105,8 @@
     .main-wrap {
       display: flex;
       justify-content: center;
-      padding: 20px;
-      gap: 20px;
+      padding: 10px;
+      gap: 14px;
       flex-wrap: wrap;
     }
 
@@ -110,6 +114,7 @@
       position: relative;
       width: 860px;
       height: 520px;
+      max-width: 100%;
       background: radial-gradient(ellipse at center, #3a7a33 0%, #1e4a1a 70%, #0f2e0c 100%);
       border-radius: 50% / 40%;
       border: 12px solid #5d4037;
@@ -328,9 +333,10 @@
 
     .side-panel {
       width: 320px;
+      max-width: 100%;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 10px;
     }
 
     .panel-box {
@@ -440,9 +446,9 @@
     .modal {
       background: rgba(20, 20, 20, 0.35);
       border-radius: 16px;
-      padding: 28px 36px;
+      padding: 20px 20px;
       max-width: 460px;
-      width: 90%;
+      width: 92%;
       border: 1px solid rgba(255, 255, 255, 0.15);
       text-align: center;
       max-height: 80vh;
@@ -482,6 +488,85 @@
     ::-webkit-scrollbar-thumb {
       background: rgba(255, 255, 255, 0.15);
       border-radius: 3px;
+    }
+
+    /* ============ 手机端适配 ============ */
+    @media (max-width: 900px) {
+      .table-area {
+        width: 100%;
+        height: 400px;
+        border-width: 8px;
+      }
+      .player-seat {
+        width: 120px;
+      }
+      .card {
+        width: 36px;
+        height: 50px;
+        font-size: 13px;
+      }
+      .card .suit { font-size: 16px; }
+      .card .rank { font-size: 11px; }
+      .player-avatar { width: 32px; height: 32px; font-size: 16px; }
+      .player-name { font-size: 11px; }
+      .player-chips { font-size: 10px; }
+      .player-bet { font-size: 11px; padding: 3px 8px; top: -28px; }
+      .player-cards { min-height: 52px; }
+      .community-cards { gap: 6px; height: 52px; margin-bottom: 10px; }
+      .pot-info { font-size: 15px; padding: 6px 16px; }
+      .phase-label { font-size: 12px; }
+      .dealer-btn { width: 18px; height: 18px; font-size: 9px; }
+      .blind-tag { font-size: 8px; padding: 1px 4px; }
+      .allin-tag { font-size: 8px; }
+    }
+
+    @media (max-width: 600px) {
+      .app-header { padding: 8px 10px; }
+      .app-header h1 { font-size: 15px; }
+      .btn { padding: 7px 10px; font-size: 12px; }
+      .main-wrap { padding: 6px; gap: 8px; }
+      .table-area {
+        width: 100%;
+        height: 320px;
+        border-width: 6px;
+        border-radius: 45% / 38%;
+      }
+      .player-seat {
+        width: 90px;
+      }
+      .card {
+        width: 28px;
+        height: 40px;
+        font-size: 10px;
+        border-radius: 3px;
+      }
+      .card .suit { font-size: 12px; }
+      .card .rank { font-size: 9px; }
+      .player-box { padding: 6px 4px; border-radius: 8px; }
+      .player-avatar { width: 26px; height: 26px; font-size: 13px; margin-bottom: 3px; border-width: 1px; }
+      .player-name { font-size: 9px; margin-bottom: 1px; }
+      .player-chips { font-size: 8px; }
+      .player-bet { font-size: 9px; padding: 2px 6px; top: -24px; border-radius: 8px; }
+      .player-cards { min-height: 42px; margin-top: 3px; gap: 2px; }
+      .community-cards { gap: 4px; height: 42px; margin-bottom: 8px; }
+      .pot-info { font-size: 13px; padding: 4px 12px; margin-bottom: 6px; }
+      .phase-label { font-size: 10px; }
+      .dealer-btn { width: 16px; height: 16px; font-size: 8px; bottom: -6px; right: 4px; }
+      .blind-tag { font-size: 7px; padding: 0 3px; bottom: -6px; left: 4px; }
+      .allin-tag { font-size: 7px; padding: 1px 4px; top: 6px; left: -4px; }
+      .side-panel { gap: 6px; }
+      .panel-box { padding: 10px; border-radius: 10px; }
+      .panel-title { font-size: 12px; margin-bottom: 6px; }
+      .log-list { max-height: 120px; font-size: 10px; }
+      .action-btns { gap: 5px; }
+      .action-btns .btn { padding: 8px 8px; font-size: 11px; flex: 1; min-width: 0; }
+      .bet-slider-wrap input[type=range] { height: 28px; }
+      .bet-val { font-size: 11px; min-width: 40px; }
+      .hand-rank-hint { font-size: 10px; }
+      .stats-row { font-size: 10px; }
+      .modal { padding: 16px 14px; border-radius: 12px; }
+      .modal h2 { font-size: 16px; }
+      .modal p { font-size: 13px; }
     }
   </style>
 </head>
@@ -672,6 +757,26 @@
     }
 
     function seatPositions(count) {
+      const isMobile = window.innerWidth <= 600;
+      const isTablet = window.innerWidth <= 900 && !isMobile;
+      if (isMobile) {
+        return [
+          { x: 50, y: 90 },   // human
+          { x: 5, y: 60 },    // left
+          { x: 15, y: 18 },   // top left
+          { x: 85, y: 18 },   // top right
+          { x: 95, y: 60 },   // right
+        ];
+      }
+      if (isTablet) {
+        return [
+          { x: 50, y: 89 },
+          { x: 6, y: 57 },
+          { x: 16, y: 18 },
+          { x: 84, y: 18 },
+          { x: 94, y: 57 },
+        ];
+      }
       return [
         { x: 50, y: 88 },   // human
         { x: 8, y: 55 },    // left
@@ -716,8 +821,9 @@
       g.players.forEach((p, i) => {
         const el = document.createElement('div');
         el.className = 'player-seat' + (i === g.currentPlayer && g.phase !== 'showdown' ? ' active' : '') + (p.folded ? ' folded' : '') + (g.winners.includes(i) ? ' winner' : '');
-        el.style.left = `calc(${pos[i].x}% - 80px)`;
-        el.style.top = `calc(${pos[i].y}% - 50px)`;
+        const seatW = window.innerWidth <= 600 ? 45 : (window.innerWidth <= 900 ? 60 : 80);
+        el.style.left = `calc(${pos[i].x}% - ${seatW}px)`;
+        el.style.top = `calc(${pos[i].y}% - ${window.innerWidth <= 600 ? 35 : 50}px)`;
         let cardsHtml = '';
         if (p.hand.length > 0) {
           if (p.isHuman || g.phase === 'showdown' || (!p.folded && g.phase === 'showdown')) {
@@ -1180,6 +1286,13 @@
     // 页面加载启动
     initGame();
     render();
+
+    // 窗口大小变化时重新渲染适配
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => render(), 150);
+    });
   </script>
 </body>
 
